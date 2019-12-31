@@ -1,12 +1,10 @@
 package main
 
 import (
-	"context"
     "fmt"
     "flag"
+    "github.com/titan-data/titan-docker-proxy/internal/proxy"
     "os"
-
-    titan "github.com/titan-data/titan-client-go"
 )
 
 func main() {
@@ -27,15 +25,8 @@ func main() {
 
     fmt.Printf("Proxying requests from %s to %s:%d\n", path, *host, *port)
 
-    config := titan.NewConfiguration()
-    config.Host = fmt.Sprintf("%s:%d", *host, *port)
-    apis := titan.NewAPIClient(config)
-    volumeApi := apis.VolumesApi
+    titan := proxy.Proxy(*host, *port)
+    desc := titan.GetPluginDescription()
 
-    ctx := context.Background()
-    volumes, _, _ := volumeApi.ListVolumes(ctx, "mongo")
-
-    for _, volume := range volumes {
-        println(volume.Name)
-    }
+    fmt.Println(desc.Implements[0])
 }
