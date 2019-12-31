@@ -26,7 +26,7 @@ func main() {
     fmt.Printf("Proxying requests from %s to %s:%d\n", path, *host, *port)
 
     titan := proxy.Proxy(*host, *port)
-    desc := titan.GetPluginDescription()
+    desc := titan.PluginActivate()
 
     fmt.Println(desc.Implements[0])
 }

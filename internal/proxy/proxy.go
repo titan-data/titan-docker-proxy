@@ -10,7 +10,11 @@ type proxy struct {
 	volumeApi  *titan.VolumesApiService
 }
 
-func (p proxy) GetPluginDescription() PluginDescription {
+func (p proxy) VolumeDriverCapabilities() VolumeDriverCapabilities {
+	return VolumeDriverCapabilities{Capabilities:Capability{Scope:"local"}}
+}
+
+func (p proxy) PluginActivate() PluginDescription {
 	return PluginDescription {
 		Implements: []string{"VolumeDriver"},
 	}
@@ -25,3 +29,4 @@ func Proxy(host string, port int) proxy {
 		volumeApi: client.VolumesApi,
 	}
 }
+
