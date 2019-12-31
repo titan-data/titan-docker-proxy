@@ -1,5 +1,11 @@
+# IDE files
+/.idea
+
 # OS Generated files
 .DS_Store
 
 # Temporary files
 .*.swp
+
+# Build output
+/docker-volume-proxy
