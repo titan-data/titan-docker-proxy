@@ -14,6 +14,10 @@ type VolumeDriverCapabilities struct {
 	Capabilities	Capability
 }
 
+type VolumeRequest struct {
+	Name             string
+}
+
 type PluginDescription struct {
 	Implements		[]string
 }
