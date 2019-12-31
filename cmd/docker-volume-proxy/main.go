@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
     "fmt"
     "flag"
     "os"
+
+    titan "github.com/titan-data/titan-client-go"
 )
 
 func main() {
@@ -23,4 +26,16 @@ func main() {
     path := flag.Arg(0)
 
     fmt.Printf("Proxying requests from %s to %s:%d\n", path, *host, *port)
+
+    config := titan.NewConfiguration()
+    config.Host = fmt.Sprintf("%s:%d", *host, *port)
+    apis := titan.NewAPIClient(config)
+    volumeApi := apis.VolumesApi
+
+    ctx := context.Background()
+    volumes, _, _ := volumeApi.ListVolumes(ctx, "mongo")
+
+    for _, volume := range volumes {
+        println(volume.Name)
+    }
 }
