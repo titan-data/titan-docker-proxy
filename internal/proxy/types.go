@@ -1,28 +1,28 @@
 package proxy
 
 type Volume struct {
-	Name    		string
-	Mountpoint    	string
-	Status			map[string]string
+	Name       string
+	Mountpoint string
+	Status     map[string]string
 }
 
 type Capability struct {
-	Scope			string
+	Scope string
 }
 
 type VolumeCapabilities struct {
-	Capabilities	Capability
+	Capabilities Capability
 }
 
 type VolumeRequest struct {
-	Name             string
+	Name string
 }
 
 type ListVolumeResponse struct {
-	Err				string
-	Volumes         []Volume
+	Err     string
+	Volumes []Volume
 }
 
 type PluginDescription struct {
-	Implements		[]string
+	Implements []string
 }

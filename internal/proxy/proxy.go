@@ -15,15 +15,15 @@ import (
  */
 
 type proxy struct {
-	client     *titan.APIClient
-	ctx        context.Context
+	client *titan.APIClient
+	ctx    context.Context
 }
 
 /*
  * Converts an error object into an "Err" string to return to consumers. If this is a titan-server API error, then
  * we return the message field. Otherwise, we return the default error string.
  */
-func getErrorString(err error) string  {
+func getErrorString(err error) string {
 	if openApiErr, ok := err.(titan.GenericOpenAPIError); ok {
 		if apiErr, ok := openApiErr.Model().(titan.ApiError); ok {
 			return apiErr.Message
@@ -37,10 +37,10 @@ func getErrorString(err error) string  {
  * volume name. The mountpoint is also pulled out of the properties to a first class response.
  */
 func titanToDocker(repo string, vol titan.Volume) Volume {
-	return Volume {
-		Name: fmt.Sprintf("%s/%s", repo, vol.Name),
+	return Volume{
+		Name:       fmt.Sprintf("%s/%s", repo, vol.Name),
 		Mountpoint: vol.Config["mountpoint"].(string),
-		Status: map[string]string{},
+		Status:     map[string]string{},
 	}
 }
 
@@ -88,7 +88,7 @@ func (p proxy) ListVolumes() ListVolumeResponse {
  * This always returns a static definition implementing "VolumeDriver"
  */
 func (p proxy) PluginActivate() PluginDescription {
-	return PluginDescription {
+	return PluginDescription{
 		Implements: []string{"VolumeDriver"},
 	}
 }
@@ -101,8 +101,8 @@ func Proxy(host string, port int) proxy {
 	config.Host = fmt.Sprintf("%s:%d", host, port)
 	client := titan.NewAPIClient(config)
 	return proxy{
-		client:     client,
-		ctx:		context.Background(),
+		client: client,
+		ctx:    context.Background(),
 	}
 }
 
@@ -115,7 +115,7 @@ func MockProxy(httpClient *http.Client) proxy {
 	config.HTTPClient = httpClient
 	client := titan.NewAPIClient(config)
 	return proxy{
-		client:    client,
-		ctx:       context.Background(),
+		client: client,
+		ctx:    context.Background(),
 	}
 }

@@ -50,8 +50,8 @@ func TestListVolumes(t *testing.T) {
 	defer teardown()
 
 	volumes := p.ListVolumes()
-	if (assert.Empty(t, volumes.Err) &&
-		assert.Equal(t, len(volumes.Volumes), 2)) {
+	if assert.Empty(t, volumes.Err) &&
+		assert.Equal(t, len(volumes.Volumes), 2) {
 		assert.Equal(t, volumes.Volumes[0].Name, "foo/v0")
 		assert.Equal(t, volumes.Volumes[0].Mountpoint, "/v0")
 		assert.Equal(t, len(volumes.Volumes[0].Status), 0)
