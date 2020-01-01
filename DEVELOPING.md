@@ -5,17 +5,19 @@ For general information about contributing changes, see the
 
 ## How it Works
 
-Describe the internal mechanisms necessary for developers to understand how
-to get started making changes.
+The 
 
 ## Building
 
-Describe how to build the project.
+To build the project, run `go build ./...`. This is equivalent to building `cmd/docker-volume-proxy/main.go`. This
+will create a binary named `docker-volume-proxy` in the root of the directory.
 
 ## Testing
 
-Describe how to test the project.
+To test the project, run `go test ./...`. This will run all tests.
 
 ## Releasing
 
-Describe how to generate new releases.
+To release, create a tag and push it. This will build the resulting go binary for Linux (the runtime for the
+titan-server container) and upload it as an artifact to the draft release. Release notes are maintained on each
+push through the release drafter action.
