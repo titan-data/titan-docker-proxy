@@ -1,13 +1,42 @@
 package proxy
 
+type Capability struct {
+	Scope string
+}
+
+type CreateVolumeRequest struct {
+	Name string
+	Opts map[string]interface{}
+}
+
+type GetPathResponse struct {
+	Err        string
+	Mountpoint string
+}
+
+type GetVolumeResponse struct {
+	Err    string
+	Volume Volume
+}
+
+type ListVolumeResponse struct {
+	Err     string
+	Volumes []Volume
+}
+
+type MountVolumeRequest struct {
+	Name string
+	ID   string
+}
+
+type PluginDescription struct {
+	Implements []string
+}
+
 type Volume struct {
 	Name       string
 	Mountpoint string
 	Status     map[string]string
-}
-
-type Capability struct {
-	Scope string
 }
 
 type VolumeCapabilities struct {
@@ -20,33 +49,4 @@ type VolumeRequest struct {
 
 type VolumeResponse struct {
 	Err string
-}
-
-type ListVolumeResponse struct {
-	Err     string
-	Volumes []Volume
-}
-
-type GetVolumeResponse struct {
-	Err    string
-	Volume Volume
-}
-
-type GetPathResponse struct {
-	Err        string
-	Mountpoint string
-}
-
-type PluginDescription struct {
-	Implements []string
-}
-
-type CreateVolumeRequest struct {
-	Name string
-	Opts map[string]interface{}
-}
-
-type MountVolumeRequest struct {
-	Name string
-	ID   string
 }
