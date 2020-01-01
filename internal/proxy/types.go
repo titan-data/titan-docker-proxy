@@ -3,19 +3,24 @@ package proxy
 type Volume struct {
 	Name    		string
 	Mountpoint    	string
-	Status			[]string
+	Status			map[string]string
 }
 
 type Capability struct {
 	Scope			string
 }
 
-type VolumeDriverCapabilities struct {
+type VolumeCapabilities struct {
 	Capabilities	Capability
 }
 
 type VolumeRequest struct {
 	Name             string
+}
+
+type ListVolumeResponse struct {
+	Err				string
+	Volumes         []Volume
 }
 
 type PluginDescription struct {

@@ -1,8 +1,8 @@
 package main
 
 import (
-    "fmt"
     "flag"
+    "fmt"
     "github.com/titan-data/titan-docker-proxy/internal/proxy"
     "os"
 )

@@ -3,14 +3,13 @@ package proxy
 import (
 	"context"
 	"github.com/stretchr/testify/assert"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
-func testClient(handler http.Handler) (*http.Client, func()) {
+func testProxy(handler http.Handler) (proxy, func()) {
 	s := httptest.NewServer(handler)
 
 	cli := &http.Client{
@@ -21,7 +20,7 @@ func testClient(handler http.Handler) (*http.Client, func()) {
 		},
 	}
 
-	return cli, s.Close
+	return MockProxy(cli), s.Close
 }
 
 func TestPluginActivate(t *testing.T) {
@@ -32,20 +31,32 @@ func TestPluginActivate(t *testing.T) {
 
 func TestVolumeDriverCapabilities(t *testing.T) {
 	p := Proxy("localhost", 5001)
-	capabilities := p.VolumeDriverCapabilities()
+	capabilities := p.VolumeCapabilities()
 	assert.Equal(t, capabilities.Capabilities.Scope, "local")
 }
 
-func TestListEmptyVolumes(t *testing.T) {
+func TestListVolumes(t *testing.T) {
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes")
-		w.Write([]byte("[]"))
+		w.Header().Set("Content-Type", "application/json")
+		if r.RequestURI == "/v1/repositories" {
+			w.Write([]byte("[{\"name\":\"foo\",\"properties\":{}}]"))
+		} else {
+			assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes")
+			w.Write([]byte("[{\"name\":\"v0\",\"config\":{\"mountpoint\":\"/v0\"}}," +
+				"{\"name\":\"v1\",\"config\":{\"mountpoint\":\"/v1\"}}]"))
+		}
 	})
-	client, teardown := testClient(h)
+	p, teardown := testProxy(h)
 	defer teardown()
 
-	resp, _ := client.Get("http://somehost/v1/repositories/foo/volumes")
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
-	assert.Equal(t, string(body), "[]")
+	volumes := p.ListVolumes()
+	if (assert.Empty(t, volumes.Err) &&
+		assert.Equal(t, len(volumes.Volumes), 2)) {
+		assert.Equal(t, volumes.Volumes[0].Name, "foo/v0")
+		assert.Equal(t, volumes.Volumes[0].Mountpoint, "/v0")
+		assert.Equal(t, len(volumes.Volumes[0].Status), 0)
+		assert.Equal(t, volumes.Volumes[1].Name, "foo/v1")
+		assert.Equal(t, volumes.Volumes[1].Mountpoint, "/v1")
+		assert.Equal(t, len(volumes.Volumes[1].Status), 0)
+	}
 }
