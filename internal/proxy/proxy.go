@@ -127,6 +127,19 @@ func (p proxy) GetVolume(request VolumeRequest) GetVolumeResponse {
 }
 
 /*
+ * /VolumeDriver.Path
+ *
+ * Get the mountpoint for a volume. Equivalent to getting the mountpoint member of the volume.
+ */
+func (p proxy) GetPath(request VolumeRequest) GetPathResponse {
+	vol := p.GetVolume(request)
+	if vol.Err != "" {
+		return GetPathResponse{Err: vol.Err}
+	}
+	return GetPathResponse{Mountpoint: vol.Volume.Mountpoint}
+}
+
+/*
  * Public proxy constructor. Takes a host ("localhost") and port (5001) to pass to the client.
  */
 func Proxy(host string, port int) proxy {
@@ -155,12 +168,6 @@ func MockProxy(httpClient *http.Client) proxy {
 
 /*
  * /VolumeDriver.Create
- *
- * TODO
- */
-
-/*
- * /VolumeDriver.Path
  *
  * TODO
  */

@@ -28,6 +28,11 @@ type GetVolumeResponse struct {
 	Volume Volume
 }
 
+type GetPathResponse struct {
+	Err        string
+	Mountpoint string
+}
+
 type PluginDescription struct {
 	Implements []string
 }

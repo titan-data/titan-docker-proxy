@@ -129,3 +129,32 @@ func TestGetVolumeError(t *testing.T) {
 	resp := p.GetVolume(VolumeRequest{Name: "foo/vol"})
 	assert.Equal(t, resp.Err, "no such volume")
 }
+
+func TestGetPath(t *testing.T) {
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes/vol")
+		w.Write([]byte("{\"name\":\"vol\",\"config\":{\"mountpoint\":\"/vol\"}}"))
+	})
+	p, teardown := testProxy(h)
+	defer teardown()
+
+	resp := p.GetPath(VolumeRequest{Name: "foo/vol"})
+	if assert.Empty(t, resp.Err) {
+		assert.Equal(t, resp.Mountpoint, "/vol")
+	}
+}
+
+func TestGetPathError(t *testing.T) {
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes/vol")
+		w.WriteHeader(404)
+		w.Write([]byte("{\"message\":\"no such volume\"}"))
+	})
+	p, teardown := testProxy(h)
+	defer teardown()
+
+	resp := p.GetPath(VolumeRequest{Name: "foo/vol"})
+	assert.Equal(t, resp.Err, "no such volume")
+}
