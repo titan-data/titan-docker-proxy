@@ -2,9 +2,11 @@ package proxy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	titan "github.com/titan-data/titan-client-go"
 	"net/http"
+	"regexp"
 )
 
 /*
@@ -30,6 +32,18 @@ func getErrorString(err error) string {
 		}
 	}
 	return err.Error()
+}
+
+/*
+ * Converts a docker volume name (repo/vol) to a (repo, volume) tuple for use with the titan API.
+ */
+func parseVolumeName(volumeName string) (string, string, error) {
+	re := regexp.MustCompile(`^([^/]+)/([^/]+)$`)
+	match := re.FindStringSubmatch(volumeName)
+	if len(match) != 3 {
+		return "", "", errors.New("volume name must be of the form <repository>/<volume>")
+	}
+	return match[1], match[2], nil
 }
 
 /*
@@ -94,6 +108,25 @@ func (p proxy) PluginActivate() PluginDescription {
 }
 
 /*
+ * /VolumeDriver.Get
+ *
+ * Get a single volume.
+ */
+func (p proxy) GetVolume(request VolumeRequest) GetVolumeResponse {
+	repoName, volumeName, err := parseVolumeName(request.Name)
+	if err != nil {
+		return GetVolumeResponse{Err: getErrorString(err)}
+	}
+
+	volume, _, err := p.client.VolumesApi.GetVolume(p.ctx, repoName, volumeName)
+	if err != nil {
+		return GetVolumeResponse{Err: getErrorString(err)}
+	}
+
+	return GetVolumeResponse{Volume: titanToDocker(repoName, volume)}
+}
+
+/*
  * Public proxy constructor. Takes a host ("localhost") and port (5001) to pass to the client.
  */
 func Proxy(host string, port int) proxy {
@@ -119,3 +152,33 @@ func MockProxy(httpClient *http.Client) proxy {
 		ctx:    context.Background(),
 	}
 }
+
+/*
+ * /VolumeDriver.Create
+ *
+ * TODO
+ */
+
+/*
+ * /VolumeDriver.Path
+ *
+ * TODO
+ */
+
+/*
+ * /VolumeDriver.Remove
+ *
+ * TODO
+ */
+
+/*
+ * /VolumeDriver.Mount
+ *
+ * TODO
+ */
+
+/*
+ * /VolumeDriver.Unmount
+ *
+ * TODO
+ */

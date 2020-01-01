@@ -23,6 +23,11 @@ type ListVolumeResponse struct {
 	Volumes []Volume
 }
 
+type GetVolumeResponse struct {
+	Err    string
+	Volume Volume
+}
+
 type PluginDescription struct {
 	Implements []string
 }

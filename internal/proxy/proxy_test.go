@@ -25,14 +25,14 @@ func testProxy(handler http.Handler) (proxy, func()) {
 
 func TestPluginActivate(t *testing.T) {
 	p := Proxy("localhost", 5001)
-	desc := p.PluginActivate()
-	assert.Equal(t, desc.Implements[0], "VolumeDriver")
+	resp := p.PluginActivate()
+	assert.Equal(t, resp.Implements[0], "VolumeDriver")
 }
 
 func TestVolumeDriverCapabilities(t *testing.T) {
 	p := Proxy("localhost", 5001)
-	capabilities := p.VolumeCapabilities()
-	assert.Equal(t, capabilities.Capabilities.Scope, "local")
+	resp := p.VolumeCapabilities()
+	assert.Equal(t, resp.Capabilities.Scope, "local")
 }
 
 func TestListVolumes(t *testing.T) {
@@ -49,15 +49,15 @@ func TestListVolumes(t *testing.T) {
 	p, teardown := testProxy(h)
 	defer teardown()
 
-	volumes := p.ListVolumes()
-	if assert.Empty(t, volumes.Err) &&
-		assert.Equal(t, len(volumes.Volumes), 2) {
-		assert.Equal(t, volumes.Volumes[0].Name, "foo/v0")
-		assert.Equal(t, volumes.Volumes[0].Mountpoint, "/v0")
-		assert.Equal(t, len(volumes.Volumes[0].Status), 0)
-		assert.Equal(t, volumes.Volumes[1].Name, "foo/v1")
-		assert.Equal(t, volumes.Volumes[1].Mountpoint, "/v1")
-		assert.Equal(t, len(volumes.Volumes[1].Status), 0)
+	resp := p.ListVolumes()
+	if assert.Empty(t, resp.Err) &&
+		assert.Equal(t, len(resp.Volumes), 2) {
+		assert.Equal(t, resp.Volumes[0].Name, "foo/v0")
+		assert.Equal(t, resp.Volumes[0].Mountpoint, "/v0")
+		assert.Equal(t, len(resp.Volumes[0].Status), 0)
+		assert.Equal(t, resp.Volumes[1].Name, "foo/v1")
+		assert.Equal(t, resp.Volumes[1].Mountpoint, "/v1")
+		assert.Equal(t, len(resp.Volumes[1].Status), 0)
 	}
 }
 
@@ -71,8 +71,8 @@ func TestListVolumesRepoError(t *testing.T) {
 	p, teardown := testProxy(h)
 	defer teardown()
 
-	volumes := p.ListVolumes()
-	assert.Equal(t, volumes.Err, "no such repository")
+	resp := p.ListVolumes()
+	assert.Equal(t, resp.Err, "no such repository")
 }
 
 func TestListVolumesVolumeError(t *testing.T) {
@@ -89,6 +89,43 @@ func TestListVolumesVolumeError(t *testing.T) {
 	p, teardown := testProxy(h)
 	defer teardown()
 
-	volumes := p.ListVolumes()
-	assert.Equal(t, volumes.Err, "no such volume")
+	resp := p.ListVolumes()
+	assert.Equal(t, resp.Err, "no such volume")
+}
+
+func TestGetVolume(t *testing.T) {
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes/vol")
+		w.Write([]byte("{\"name\":\"vol\",\"config\":{\"mountpoint\":\"/vol\"}}"))
+	})
+	p, teardown := testProxy(h)
+	defer teardown()
+
+	resp := p.GetVolume(VolumeRequest{Name: "foo/vol"})
+	if assert.Empty(t, resp.Err) {
+		assert.Equal(t, resp.Volume.Name, "foo/vol")
+		assert.Equal(t, resp.Volume.Mountpoint, "/vol")
+	}
+}
+
+func TestGetVolumeBadName(t *testing.T) {
+	p := Proxy("localhost", 5001)
+
+	resp := p.GetVolume(VolumeRequest{Name: "foo"})
+	assert.Equal(t, resp.Err, "volume name must be of the form <repository>/<volume>")
+}
+
+func TestGetVolumeError(t *testing.T) {
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes/vol")
+		w.WriteHeader(404)
+		w.Write([]byte("{\"message\":\"no such volume\"}"))
+	})
+	p, teardown := testProxy(h)
+	defer teardown()
+
+	resp := p.GetVolume(VolumeRequest{Name: "foo/vol"})
+	assert.Equal(t, resp.Err, "no such volume")
 }
