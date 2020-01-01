@@ -214,3 +214,38 @@ func TestCreateVolumeError(t *testing.T) {
 	resp := p.CreateVolume(CreateVolumeRequest{Name: "foo/vol", Opts: map[string]interface{}{"a": "b"}})
 	assert.Equal(t, resp.Err, "no such repository")
 }
+
+func TestRemoveVolume(t *testing.T) {
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		assert.Equal(t, r.Method, "DELETE")
+		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes/vol")
+		w.WriteHeader(204)
+	})
+	p, teardown := testProxy(h)
+	defer teardown()
+
+	resp := p.RemoveVolume(VolumeRequest{Name: "foo/vol"})
+	assert.Empty(t, resp.Err)
+}
+
+func TestRemoveVolumeBadName(t *testing.T) {
+	p := Proxy("localhost", 5001)
+
+	resp := p.RemoveVolume(VolumeRequest{Name: "foo"})
+	assert.Equal(t, resp.Err, "volume name must be of the form <repository>/<volume>")
+}
+
+func TestRemoveVolumeError(t *testing.T) {
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(404)
+		w.Write([]byte("{\"message\":\"no such repository\"}"))
+		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes/vol")
+	})
+	p, teardown := testProxy(h)
+	defer teardown()
+
+	resp := p.RemoveVolume(VolumeRequest{Name: "foo/vol"})
+	assert.Equal(t, resp.Err, "no such repository")
+}

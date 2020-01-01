@@ -166,6 +166,25 @@ func (p proxy) CreateVolume(request CreateVolumeRequest) VolumeResponse {
 }
 
 /*
+ * /VolumeDriver.Remove
+ *
+ * Delete a volume. This simply parses the name to the native titan form, and marshals any errors in the process.
+ */
+func (p proxy) RemoveVolume(request VolumeRequest) VolumeResponse {
+	repoName, volumeName, err := parseVolumeName(request.Name)
+	if err != nil {
+		return VolumeResponse{Err: getErrorString(err)}
+	}
+
+	_, err = p.client.VolumesApi.DeleteVolume(p.ctx, repoName, volumeName)
+	if err != nil {
+		return VolumeResponse{Err: getErrorString(err)}
+	}
+
+	return VolumeResponse{Err: ""}
+}
+
+/*
  * Public proxy constructor. Takes a host ("localhost") and port (5001) to pass to the client.
  */
 func Proxy(host string, port int) proxy {
@@ -191,12 +210,6 @@ func MockProxy(httpClient *http.Client) proxy {
 		ctx:    context.Background(),
 	}
 }
-
-/*
- * /VolumeDriver.Remove
- *
- * TODO
- */
 
 /*
  * /VolumeDriver.Mount
