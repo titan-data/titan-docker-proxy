@@ -3,6 +3,7 @@ package proxy
 import (
 	"context"
 	"github.com/stretchr/testify/assert"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -157,4 +158,59 @@ func TestGetPathError(t *testing.T) {
 
 	resp := p.GetPath(VolumeRequest{Name: "foo/vol"})
 	assert.Equal(t, resp.Err, "no such volume")
+}
+
+func TestCreateVolume(t *testing.T) {
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(201)
+		assert.Equal(t, r.Method, "POST")
+		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes")
+		body, _ := ioutil.ReadAll(r.Body)
+		assert.Equal(t, string(body), "{\"name\":\"vol\",\"properties\":{\"a\":\"b\"}}\n")
+		w.Write([]byte("{\"name\":\"vol\",\"config\":{},\"properties\":{\"a\":\"b\"}}"))
+	})
+	p, teardown := testProxy(h)
+	defer teardown()
+
+	resp := p.CreateVolume(CreateVolumeRequest{Name: "foo/vol", Opts: map[string]interface{}{"a": "b"}})
+	assert.Empty(t, resp.Err)
+}
+
+func TestCreateVolumeNoOpts(t *testing.T) {
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(201)
+		assert.Equal(t, r.Method, "POST")
+		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes")
+		body, _ := ioutil.ReadAll(r.Body)
+		assert.Equal(t, string(body), "{\"name\":\"vol\",\"properties\":{}}\n")
+		w.Write([]byte("{\"name\":\"vol\",\"config\":{},\"properties\":{}}"))
+	})
+	p, teardown := testProxy(h)
+	defer teardown()
+
+	resp := p.CreateVolume(CreateVolumeRequest{Name: "foo/vol"})
+	assert.Empty(t, resp.Err)
+}
+
+func TestCreateVolumeBadName(t *testing.T) {
+	p := Proxy("localhost", 5001)
+
+	resp := p.CreateVolume(CreateVolumeRequest{Name: "foo", Opts: map[string]interface{}{"a": "b"}})
+	assert.Equal(t, resp.Err, "volume name must be of the form <repository>/<volume>")
+}
+
+func TestCreateVolumeError(t *testing.T) {
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(404)
+		w.Write([]byte("{\"message\":\"no such repository\"}"))
+		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes")
+	})
+	p, teardown := testProxy(h)
+	defer teardown()
+
+	resp := p.CreateVolume(CreateVolumeRequest{Name: "foo/vol", Opts: map[string]interface{}{"a": "b"}})
+	assert.Equal(t, resp.Err, "no such repository")
 }

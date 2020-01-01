@@ -140,6 +140,32 @@ func (p proxy) GetPath(request VolumeRequest) GetPathResponse {
 }
 
 /*
+ * /VolumeDriver.Create
+ *
+ * Create a new repository. The "Opts" map is converted to be the volume properties.
+ */
+func (p proxy) CreateVolume(request CreateVolumeRequest) VolumeResponse {
+	repoName, volumeName, err := parseVolumeName(request.Name)
+	if err != nil {
+		return VolumeResponse{Err: getErrorString(err)}
+	}
+
+	properties := map[string]interface{}{}
+	if request.Opts != nil {
+		properties = request.Opts
+	}
+	vol := titan.Volume{
+		Name:       volumeName,
+		Properties: properties,
+	}
+	_, _, err = p.client.VolumesApi.CreateVolume(p.ctx, repoName, vol)
+	if err != nil {
+		return VolumeResponse{Err: getErrorString(err)}
+	}
+	return VolumeResponse{}
+}
+
+/*
  * Public proxy constructor. Takes a host ("localhost") and port (5001) to pass to the client.
  */
 func Proxy(host string, port int) proxy {
@@ -165,12 +191,6 @@ func MockProxy(httpClient *http.Client) proxy {
 		ctx:    context.Background(),
 	}
 }
-
-/*
- * /VolumeDriver.Create
- *
- * TODO
- */
 
 /*
  * /VolumeDriver.Remove
