@@ -60,3 +60,35 @@ func TestListVolumes(t *testing.T) {
 		assert.Equal(t, len(volumes.Volumes[1].Status), 0)
 	}
 }
+
+func TestListVolumesRepoError(t *testing.T) {
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		assert.Equal(t, r.RequestURI, "/v1/repositories")
+		w.WriteHeader(404)
+		w.Write([]byte("{\"message\":\"no such repository\"}"))
+	})
+	p, teardown := testProxy(h)
+	defer teardown()
+
+	volumes := p.ListVolumes()
+	assert.Equal(t, volumes.Err, "no such repository")
+}
+
+func TestListVolumesVolumeError(t *testing.T) {
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.RequestURI == "/v1/repositories" {
+			w.Write([]byte("[{\"name\":\"foo\",\"properties\":{}}]"))
+		} else {
+			assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes")
+			w.WriteHeader(404)
+			w.Write([]byte("{\"message\":\"no such volume\"}"))
+		}
+	})
+	p, teardown := testProxy(h)
+	defer teardown()
+
+	volumes := p.ListVolumes()
+	assert.Equal(t, volumes.Err, "no such volume")
+}
