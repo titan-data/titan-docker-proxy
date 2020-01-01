@@ -249,3 +249,75 @@ func TestRemoveVolumeError(t *testing.T) {
 	resp := p.RemoveVolume(VolumeRequest{Name: "foo/vol"})
 	assert.Equal(t, resp.Err, "no such repository")
 }
+
+func TestMountVolume(t *testing.T) {
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		assert.Equal(t, r.Method, "POST")
+		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes/vol/activate")
+		w.WriteHeader(204)
+	})
+	p, teardown := testProxy(h)
+	defer teardown()
+
+	resp := p.MountVolume(MountVolumeRequest{Name: "foo/vol"})
+	assert.Empty(t, resp.Err)
+}
+
+func TestMountVolumeBadName(t *testing.T) {
+	p := Proxy("localhost", 5001)
+
+	resp := p.MountVolume(MountVolumeRequest{Name: "foo"})
+	assert.Equal(t, resp.Err, "volume name must be of the form <repository>/<volume>")
+}
+
+func TestMountVolumeError(t *testing.T) {
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		assert.Equal(t, r.Method, "POST")
+		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes/vol/activate")
+		w.WriteHeader(404)
+		w.Write([]byte("{\"message\":\"no such repository\"}"))
+	})
+	p, teardown := testProxy(h)
+	defer teardown()
+
+	resp := p.MountVolume(MountVolumeRequest{Name: "foo/vol"})
+	assert.Equal(t, resp.Err, "no such repository")
+}
+
+func TestUnmountVolume(t *testing.T) {
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		assert.Equal(t, r.Method, "POST")
+		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes/vol/deactivate")
+		w.WriteHeader(204)
+	})
+	p, teardown := testProxy(h)
+	defer teardown()
+
+	resp := p.UnmountVolume(MountVolumeRequest{Name: "foo/vol"})
+	assert.Empty(t, resp.Err)
+}
+
+func TestUnmountVolumeBadName(t *testing.T) {
+	p := Proxy("localhost", 5001)
+
+	resp := p.UnmountVolume(MountVolumeRequest{Name: "foo"})
+	assert.Equal(t, resp.Err, "volume name must be of the form <repository>/<volume>")
+}
+
+func TestUnmountVolumeError(t *testing.T) {
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		assert.Equal(t, r.Method, "POST")
+		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes/vol/deactivate")
+		w.WriteHeader(404)
+		w.Write([]byte("{\"message\":\"no such repository\"}"))
+	})
+	p, teardown := testProxy(h)
+	defer teardown()
+
+	resp := p.UnmountVolume(MountVolumeRequest{Name: "foo/vol"})
+	assert.Equal(t, resp.Err, "no such repository")
+}

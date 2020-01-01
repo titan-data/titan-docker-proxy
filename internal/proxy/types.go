@@ -45,3 +45,8 @@ type CreateVolumeRequest struct {
 	Name string
 	Opts map[string]interface{}
 }
+
+type MountVolumeRequest struct {
+	Name string
+	ID   string
+}

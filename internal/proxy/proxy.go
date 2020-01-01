@@ -47,6 +47,17 @@ func parseVolumeName(volumeName string) (string, string, error) {
 }
 
 /*
+ * A number of methods return a common VolumeResponse, which contains only an "Err" field. This method will handle
+ * an optional error and convert it to that common type.
+ */
+func standardResponse(err error) VolumeResponse {
+	if err != nil {
+		return VolumeResponse{Err: getErrorString(err)}
+	}
+	return VolumeResponse{}
+}
+
+/*
  * Converts from a Titan volume to a Docker volume. The main difference is that the repository name is part of the
  * volume name. The mountpoint is also pulled out of the properties to a first class response.
  */
@@ -146,23 +157,18 @@ func (p proxy) GetPath(request VolumeRequest) GetPathResponse {
  */
 func (p proxy) CreateVolume(request CreateVolumeRequest) VolumeResponse {
 	repoName, volumeName, err := parseVolumeName(request.Name)
-	if err != nil {
-		return VolumeResponse{Err: getErrorString(err)}
+	if err == nil {
+		properties := map[string]interface{}{}
+		if request.Opts != nil {
+			properties = request.Opts
+		}
+		vol := titan.Volume{
+			Name:       volumeName,
+			Properties: properties,
+		}
+		_, _, err = p.client.VolumesApi.CreateVolume(p.ctx, repoName, vol)
 	}
-
-	properties := map[string]interface{}{}
-	if request.Opts != nil {
-		properties = request.Opts
-	}
-	vol := titan.Volume{
-		Name:       volumeName,
-		Properties: properties,
-	}
-	_, _, err = p.client.VolumesApi.CreateVolume(p.ctx, repoName, vol)
-	if err != nil {
-		return VolumeResponse{Err: getErrorString(err)}
-	}
-	return VolumeResponse{}
+	return standardResponse(err)
 }
 
 /*
@@ -173,15 +179,37 @@ func (p proxy) CreateVolume(request CreateVolumeRequest) VolumeResponse {
 func (p proxy) RemoveVolume(request VolumeRequest) VolumeResponse {
 	repoName, volumeName, err := parseVolumeName(request.Name)
 	if err != nil {
-		return VolumeResponse{Err: getErrorString(err)}
+		return standardResponse(err)
 	}
 
 	_, err = p.client.VolumesApi.DeleteVolume(p.ctx, repoName, volumeName)
-	if err != nil {
-		return VolumeResponse{Err: getErrorString(err)}
-	}
+	return standardResponse(err)
+}
 
-	return VolumeResponse{Err: ""}
+/*
+ * /VolumeDriver.Mount
+ *
+ * Mount a volume. This is equivalent to activating a titan volume.
+ */
+func (p proxy) MountVolume(request MountVolumeRequest) VolumeResponse {
+	repoName, volumeName, err := parseVolumeName(request.Name)
+	if err == nil {
+		_, err = p.client.VolumesApi.ActivateVolume(p.ctx, repoName, volumeName)
+	}
+	return standardResponse(err)
+}
+
+/*
+ * /VolumeDriver.Unmount
+ *
+ * Unmount a volume. This is equivalent to deactivating a titan volume.
+ */
+func (p proxy) UnmountVolume(request MountVolumeRequest) VolumeResponse {
+	repoName, volumeName, err := parseVolumeName(request.Name)
+	if err == nil {
+		_, err = p.client.VolumesApi.DeactivateVolume(p.ctx, repoName, volumeName)
+	}
+	return standardResponse(err)
 }
 
 /*
@@ -210,15 +238,3 @@ func MockProxy(httpClient *http.Client) proxy {
 		ctx:    context.Background(),
 	}
 }
-
-/*
- * /VolumeDriver.Mount
- *
- * TODO
- */
-
-/*
- * /VolumeDriver.Unmount
- *
- * TODO
- */
