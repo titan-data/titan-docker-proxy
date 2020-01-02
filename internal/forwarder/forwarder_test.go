@@ -2,7 +2,7 @@
  * Copyright The Titan Project Contributors.
  */
 
-package proxy
+package forwarder
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	"testing"
 )
 
-func testProxy(handler http.Handler) (proxy, func()) {
+func testForwarder(handler http.Handler) (forwarder, func()) {
 	s := httptest.NewServer(handler)
 
 	cli := &http.Client{
@@ -25,18 +25,18 @@ func testProxy(handler http.Handler) (proxy, func()) {
 		},
 	}
 
-	return MockProxy(cli), s.Close
+	return MockForwarder(cli), s.Close
 }
 
 func TestPluginActivate(t *testing.T) {
-	p := Proxy("localhost", 5001)
-	resp := p.PluginActivate()
+	f := Forwarder("localhost", 5001)
+	resp := f.PluginActivate()
 	assert.Equal(t, resp.Implements[0], "VolumeDriver")
 }
 
 func TestVolumeDriverCapabilities(t *testing.T) {
-	p := Proxy("localhost", 5001)
-	resp := p.VolumeCapabilities()
+	f := Forwarder("localhost", 5001)
+	resp := f.VolumeCapabilities()
 	assert.Equal(t, resp.Capabilities.Scope, "local")
 }
 
@@ -51,10 +51,10 @@ func TestListVolumes(t *testing.T) {
 				"{\"name\":\"v1\",\"config\":{\"mountpoint\":\"/v1\"}}]"))
 		}
 	})
-	p, teardown := testProxy(h)
+	f, teardown := testForwarder(h)
 	defer teardown()
 
-	resp := p.ListVolumes()
+	resp := f.ListVolumes()
 	if assert.Empty(t, resp.Err) &&
 		assert.Equal(t, len(resp.Volumes), 2) {
 		assert.Equal(t, resp.Volumes[0].Name, "foo/v0")
@@ -73,10 +73,10 @@ func TestListVolumesRepoError(t *testing.T) {
 		w.WriteHeader(404)
 		w.Write([]byte("{\"message\":\"no such repository\"}"))
 	})
-	p, teardown := testProxy(h)
+	f, teardown := testForwarder(h)
 	defer teardown()
 
-	resp := p.ListVolumes()
+	resp := f.ListVolumes()
 	assert.Equal(t, resp.Err, "no such repository")
 }
 
@@ -91,10 +91,10 @@ func TestListVolumesVolumeError(t *testing.T) {
 			w.Write([]byte("{\"message\":\"no such volume\"}"))
 		}
 	})
-	p, teardown := testProxy(h)
+	f, teardown := testForwarder(h)
 	defer teardown()
 
-	resp := p.ListVolumes()
+	resp := f.ListVolumes()
 	assert.Equal(t, resp.Err, "no such volume")
 }
 
@@ -104,10 +104,10 @@ func TestGetVolume(t *testing.T) {
 		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes/vol")
 		w.Write([]byte("{\"name\":\"vol\",\"config\":{\"mountpoint\":\"/vol\"}}"))
 	})
-	p, teardown := testProxy(h)
+	f, teardown := testForwarder(h)
 	defer teardown()
 
-	resp := p.GetVolume(VolumeRequest{Name: "foo/vol"})
+	resp := f.GetVolume(VolumeRequest{Name: "foo/vol"})
 	if assert.Empty(t, resp.Err) {
 		assert.Equal(t, resp.Volume.Name, "foo/vol")
 		assert.Equal(t, resp.Volume.Mountpoint, "/vol")
@@ -115,9 +115,9 @@ func TestGetVolume(t *testing.T) {
 }
 
 func TestGetVolumeBadName(t *testing.T) {
-	p := Proxy("localhost", 5001)
+	f := Forwarder("localhost", 5001)
 
-	resp := p.GetVolume(VolumeRequest{Name: "foo"})
+	resp := f.GetVolume(VolumeRequest{Name: "foo"})
 	assert.Equal(t, resp.Err, "volume name must be of the form <repository>/<volume>")
 }
 
@@ -128,10 +128,10 @@ func TestGetVolumeError(t *testing.T) {
 		w.WriteHeader(404)
 		w.Write([]byte("{\"message\":\"no such volume\"}"))
 	})
-	p, teardown := testProxy(h)
+	f, teardown := testForwarder(h)
 	defer teardown()
 
-	resp := p.GetVolume(VolumeRequest{Name: "foo/vol"})
+	resp := f.GetVolume(VolumeRequest{Name: "foo/vol"})
 	assert.Equal(t, resp.Err, "no such volume")
 }
 
@@ -141,10 +141,10 @@ func TestGetPath(t *testing.T) {
 		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes/vol")
 		w.Write([]byte("{\"name\":\"vol\",\"config\":{\"mountpoint\":\"/vol\"}}"))
 	})
-	p, teardown := testProxy(h)
+	f, teardown := testForwarder(h)
 	defer teardown()
 
-	resp := p.GetPath(VolumeRequest{Name: "foo/vol"})
+	resp := f.GetPath(VolumeRequest{Name: "foo/vol"})
 	if assert.Empty(t, resp.Err) {
 		assert.Equal(t, resp.Mountpoint, "/vol")
 	}
@@ -157,10 +157,10 @@ func TestGetPathError(t *testing.T) {
 		w.WriteHeader(404)
 		w.Write([]byte("{\"message\":\"no such volume\"}"))
 	})
-	p, teardown := testProxy(h)
+	f, teardown := testForwarder(h)
 	defer teardown()
 
-	resp := p.GetPath(VolumeRequest{Name: "foo/vol"})
+	resp := f.GetPath(VolumeRequest{Name: "foo/vol"})
 	assert.Equal(t, resp.Err, "no such volume")
 }
 
@@ -174,10 +174,10 @@ func TestCreateVolume(t *testing.T) {
 		assert.Equal(t, string(body), "{\"name\":\"vol\",\"properties\":{\"a\":\"b\"}}\n")
 		w.Write([]byte("{\"name\":\"vol\",\"config\":{},\"properties\":{\"a\":\"b\"}}"))
 	})
-	p, teardown := testProxy(h)
+	f, teardown := testForwarder(h)
 	defer teardown()
 
-	resp := p.CreateVolume(CreateVolumeRequest{Name: "foo/vol", Opts: map[string]interface{}{"a": "b"}})
+	resp := f.CreateVolume(CreateVolumeRequest{Name: "foo/vol", Opts: map[string]interface{}{"a": "b"}})
 	assert.Empty(t, resp.Err)
 }
 
@@ -191,17 +191,17 @@ func TestCreateVolumeNoOpts(t *testing.T) {
 		assert.Equal(t, string(body), "{\"name\":\"vol\",\"properties\":{}}\n")
 		w.Write([]byte("{\"name\":\"vol\",\"config\":{},\"properties\":{}}"))
 	})
-	p, teardown := testProxy(h)
+	f, teardown := testForwarder(h)
 	defer teardown()
 
-	resp := p.CreateVolume(CreateVolumeRequest{Name: "foo/vol"})
+	resp := f.CreateVolume(CreateVolumeRequest{Name: "foo/vol"})
 	assert.Empty(t, resp.Err)
 }
 
 func TestCreateVolumeBadName(t *testing.T) {
-	p := Proxy("localhost", 5001)
+	f := Forwarder("localhost", 5001)
 
-	resp := p.CreateVolume(CreateVolumeRequest{Name: "foo", Opts: map[string]interface{}{"a": "b"}})
+	resp := f.CreateVolume(CreateVolumeRequest{Name: "foo", Opts: map[string]interface{}{"a": "b"}})
 	assert.Equal(t, resp.Err, "volume name must be of the form <repository>/<volume>")
 }
 
@@ -212,10 +212,10 @@ func TestCreateVolumeError(t *testing.T) {
 		w.Write([]byte("{\"message\":\"no such repository\"}"))
 		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes")
 	})
-	p, teardown := testProxy(h)
+	f, teardown := testForwarder(h)
 	defer teardown()
 
-	resp := p.CreateVolume(CreateVolumeRequest{Name: "foo/vol", Opts: map[string]interface{}{"a": "b"}})
+	resp := f.CreateVolume(CreateVolumeRequest{Name: "foo/vol", Opts: map[string]interface{}{"a": "b"}})
 	assert.Equal(t, resp.Err, "no such repository")
 }
 
@@ -226,17 +226,17 @@ func TestRemoveVolume(t *testing.T) {
 		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes/vol")
 		w.WriteHeader(204)
 	})
-	p, teardown := testProxy(h)
+	f, teardown := testForwarder(h)
 	defer teardown()
 
-	resp := p.RemoveVolume(VolumeRequest{Name: "foo/vol"})
+	resp := f.RemoveVolume(VolumeRequest{Name: "foo/vol"})
 	assert.Empty(t, resp.Err)
 }
 
 func TestRemoveVolumeBadName(t *testing.T) {
-	p := Proxy("localhost", 5001)
+	f := Forwarder("localhost", 5001)
 
-	resp := p.RemoveVolume(VolumeRequest{Name: "foo"})
+	resp := f.RemoveVolume(VolumeRequest{Name: "foo"})
 	assert.Equal(t, resp.Err, "volume name must be of the form <repository>/<volume>")
 }
 
@@ -247,10 +247,10 @@ func TestRemoveVolumeError(t *testing.T) {
 		w.Write([]byte("{\"message\":\"no such repository\"}"))
 		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes/vol")
 	})
-	p, teardown := testProxy(h)
+	f, teardown := testForwarder(h)
 	defer teardown()
 
-	resp := p.RemoveVolume(VolumeRequest{Name: "foo/vol"})
+	resp := f.RemoveVolume(VolumeRequest{Name: "foo/vol"})
 	assert.Equal(t, resp.Err, "no such repository")
 }
 
@@ -261,17 +261,17 @@ func TestMountVolume(t *testing.T) {
 		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes/vol/activate")
 		w.WriteHeader(204)
 	})
-	p, teardown := testProxy(h)
+	f, teardown := testForwarder(h)
 	defer teardown()
 
-	resp := p.MountVolume(MountVolumeRequest{Name: "foo/vol"})
+	resp := f.MountVolume(MountVolumeRequest{Name: "foo/vol"})
 	assert.Empty(t, resp.Err)
 }
 
 func TestMountVolumeBadName(t *testing.T) {
-	p := Proxy("localhost", 5001)
+	f := Forwarder("localhost", 5001)
 
-	resp := p.MountVolume(MountVolumeRequest{Name: "foo"})
+	resp := f.MountVolume(MountVolumeRequest{Name: "foo"})
 	assert.Equal(t, resp.Err, "volume name must be of the form <repository>/<volume>")
 }
 
@@ -283,10 +283,10 @@ func TestMountVolumeError(t *testing.T) {
 		w.WriteHeader(404)
 		w.Write([]byte("{\"message\":\"no such repository\"}"))
 	})
-	p, teardown := testProxy(h)
+	f, teardown := testForwarder(h)
 	defer teardown()
 
-	resp := p.MountVolume(MountVolumeRequest{Name: "foo/vol"})
+	resp := f.MountVolume(MountVolumeRequest{Name: "foo/vol"})
 	assert.Equal(t, resp.Err, "no such repository")
 }
 
@@ -297,17 +297,17 @@ func TestUnmountVolume(t *testing.T) {
 		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes/vol/deactivate")
 		w.WriteHeader(204)
 	})
-	p, teardown := testProxy(h)
+	f, teardown := testForwarder(h)
 	defer teardown()
 
-	resp := p.UnmountVolume(MountVolumeRequest{Name: "foo/vol"})
+	resp := f.UnmountVolume(MountVolumeRequest{Name: "foo/vol"})
 	assert.Empty(t, resp.Err)
 }
 
 func TestUnmountVolumeBadName(t *testing.T) {
-	p := Proxy("localhost", 5001)
+	f := Forwarder("localhost", 5001)
 
-	resp := p.UnmountVolume(MountVolumeRequest{Name: "foo"})
+	resp := f.UnmountVolume(MountVolumeRequest{Name: "foo"})
 	assert.Equal(t, resp.Err, "volume name must be of the form <repository>/<volume>")
 }
 
@@ -319,9 +319,9 @@ func TestUnmountVolumeError(t *testing.T) {
 		w.WriteHeader(404)
 		w.Write([]byte("{\"message\":\"no such repository\"}"))
 	})
-	p, teardown := testProxy(h)
+	f, teardown := testForwarder(h)
 	defer teardown()
 
-	resp := p.UnmountVolume(MountVolumeRequest{Name: "foo/vol"})
+	resp := f.UnmountVolume(MountVolumeRequest{Name: "foo/vol"})
 	assert.Equal(t, resp.Err, "no such repository")
 }

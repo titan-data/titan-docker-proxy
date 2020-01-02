@@ -5,7 +5,13 @@ For general information about contributing changes, see the
 
 ## How it Works
 
-The 
+The proxy consists of two main pieces: the forwarder and the listener. The forwarder takes inputs in the form of
+the docker API, invokes the appropriate titan method, and returns back docker specific objects. The listener is
+responsible for listening on the appropriate Unix domain socket, routing requests,and marshaling / unmarshaling
+data.
+
+The command itself is just a wrapper around the internal methods, with command line arguments for specifying
+things like the docker socket path and alternate ports.
 
 ## Building
 

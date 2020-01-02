@@ -2,7 +2,7 @@
  * Copyright The Titan Project Contributors.
  */
 
-package proxy
+package forwarder
 
 import (
 	"context"
@@ -14,13 +14,13 @@ import (
 )
 
 /*
- * The proxy class is responsible for taking docker requests as input, and making the appropriate calls to an
+ * The forwarder class is responsible for taking docker requests as input, and making the appropriate calls to an
  * instance of titan-server. The inputs to these functions are all structures defined in this package. The
  * responsibility of listening on the appropriate docker socket, marshalling to and from JSON, etc rests with
  * other portions of the package.
  */
 
-type proxy struct {
+type forwarder struct {
 	client *titan.APIClient
 	ctx    context.Context
 }
@@ -78,7 +78,7 @@ func titanToDocker(repo string, vol titan.Volume) Volume {
  *
  * This always returns a static definition with a "local" scope.
  */
-func (p proxy) VolumeCapabilities() VolumeCapabilities {
+func (p forwarder) VolumeCapabilities() VolumeCapabilities {
 	return VolumeCapabilities{Capabilities: Capability{Scope: "local"}}
 }
 
@@ -88,7 +88,7 @@ func (p proxy) VolumeCapabilities() VolumeCapabilities {
  * Returns a list of all volumes on the system. This requires iterating over all repositories followed by the volumes
  * for each.
  */
-func (p proxy) ListVolumes() ListVolumeResponse {
+func (p forwarder) ListVolumes() ListVolumeResponse {
 	repositories, _, err := p.client.RepositoriesApi.ListRepositories(p.ctx)
 	if err != nil {
 		return ListVolumeResponse{Err: getErrorString(err)}
@@ -116,7 +116,7 @@ func (p proxy) ListVolumes() ListVolumeResponse {
  *
  * This always returns a static definition implementing "VolumeDriver"
  */
-func (p proxy) PluginActivate() PluginDescription {
+func (p forwarder) PluginActivate() PluginDescription {
 	return PluginDescription{
 		Implements: []string{"VolumeDriver"},
 	}
@@ -127,7 +127,7 @@ func (p proxy) PluginActivate() PluginDescription {
  *
  * Get a single volume.
  */
-func (p proxy) GetVolume(request VolumeRequest) GetVolumeResponse {
+func (p forwarder) GetVolume(request VolumeRequest) GetVolumeResponse {
 	repoName, volumeName, err := parseVolumeName(request.Name)
 	if err != nil {
 		return GetVolumeResponse{Err: getErrorString(err)}
@@ -146,7 +146,7 @@ func (p proxy) GetVolume(request VolumeRequest) GetVolumeResponse {
  *
  * Get the mountpoint for a volume. Equivalent to getting the mountpoint member of the volume.
  */
-func (p proxy) GetPath(request VolumeRequest) GetPathResponse {
+func (p forwarder) GetPath(request VolumeRequest) GetPathResponse {
 	vol := p.GetVolume(request)
 	if vol.Err != "" {
 		return GetPathResponse{Err: vol.Err}
@@ -159,7 +159,7 @@ func (p proxy) GetPath(request VolumeRequest) GetPathResponse {
  *
  * Create a new repository. The "Opts" map is converted to be the volume properties.
  */
-func (p proxy) CreateVolume(request CreateVolumeRequest) VolumeResponse {
+func (p forwarder) CreateVolume(request CreateVolumeRequest) VolumeResponse {
 	repoName, volumeName, err := parseVolumeName(request.Name)
 	if err == nil {
 		properties := map[string]interface{}{}
@@ -180,7 +180,7 @@ func (p proxy) CreateVolume(request CreateVolumeRequest) VolumeResponse {
  *
  * Delete a volume. This simply parses the name to the native titan form, and marshals any errors in the process.
  */
-func (p proxy) RemoveVolume(request VolumeRequest) VolumeResponse {
+func (p forwarder) RemoveVolume(request VolumeRequest) VolumeResponse {
 	repoName, volumeName, err := parseVolumeName(request.Name)
 	if err != nil {
 		return standardResponse(err)
@@ -195,7 +195,7 @@ func (p proxy) RemoveVolume(request VolumeRequest) VolumeResponse {
  *
  * Mount a volume. This is equivalent to activating a titan volume.
  */
-func (p proxy) MountVolume(request MountVolumeRequest) VolumeResponse {
+func (p forwarder) MountVolume(request MountVolumeRequest) VolumeResponse {
 	repoName, volumeName, err := parseVolumeName(request.Name)
 	if err == nil {
 		_, err = p.client.VolumesApi.ActivateVolume(p.ctx, repoName, volumeName)
@@ -208,7 +208,7 @@ func (p proxy) MountVolume(request MountVolumeRequest) VolumeResponse {
  *
  * Unmount a volume. This is equivalent to deactivating a titan volume.
  */
-func (p proxy) UnmountVolume(request MountVolumeRequest) VolumeResponse {
+func (p forwarder) UnmountVolume(request MountVolumeRequest) VolumeResponse {
 	repoName, volumeName, err := parseVolumeName(request.Name)
 	if err == nil {
 		_, err = p.client.VolumesApi.DeactivateVolume(p.ctx, repoName, volumeName)
@@ -217,13 +217,13 @@ func (p proxy) UnmountVolume(request MountVolumeRequest) VolumeResponse {
 }
 
 /*
- * Public proxy constructor. Takes a host ("localhost") and port (5001) to pass to the client.
+ * Public forwarder constructor. Takes a host ("localhost") and port (5001) to pass to the client.
  */
-func Proxy(host string, port int) proxy {
+func Forwarder(host string, port int) forwarder {
 	config := titan.NewConfiguration()
 	config.Host = fmt.Sprintf("%s:%d", host, port)
 	client := titan.NewAPIClient(config)
-	return proxy{
+	return forwarder{
 		client: client,
 		ctx:    context.Background(),
 	}
@@ -233,11 +233,11 @@ func Proxy(host string, port int) proxy {
  * For use in testing, this allows the test to pass a (mock) HTTP client to the titan client in order to facilitate
  * testing.
  */
-func MockProxy(httpClient *http.Client) proxy {
+func MockForwarder(httpClient *http.Client) forwarder {
 	config := titan.NewConfiguration()
 	config.HTTPClient = httpClient
 	client := titan.NewAPIClient(config)
-	return proxy{
+	return forwarder{
 		client: client,
 		ctx:    context.Background(),
 	}

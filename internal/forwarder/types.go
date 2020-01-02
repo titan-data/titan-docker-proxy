@@ -2,7 +2,7 @@
  * Copyright The Titan Project Contributors.
  */
 
-package proxy
+package forwarder
 
 type Capability struct {
 	Scope string

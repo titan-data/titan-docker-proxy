@@ -7,13 +7,13 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/titan-data/titan-docker-proxy/internal/proxy"
+	"github.com/titan-data/titan-docker-proxy/internal/forwarder"
 	"os"
 )
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: docker-volume-proxy [--host host] [--port port] socket\n")
+		fmt.Fprintf(os.Stderr, "Usage: docker-volume-forwarder [--host host] [--port port] socket\n")
 		flag.PrintDefaults()
 	}
 
@@ -29,7 +29,7 @@ func main() {
 
 	fmt.Printf("Proxying requests from %s to %s:%d\n", path, *host, *port)
 
-	titan := proxy.Proxy(*host, *port)
+	titan := forwarder.Forwarder(*host, *port)
 	volumes := titan.ListVolumes()
 
 	for _, vol := range volumes.Volumes {
