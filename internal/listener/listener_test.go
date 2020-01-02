@@ -19,30 +19,98 @@ type MockForwarder struct {
 }
 
 func (f *MockForwarder) CreateVolume(request forwarder.CreateVolumeRequest) forwarder.VolumeResponse {
-	return forwarder.VolumeResponse{Err: ""}
+	args := f.Called(request)
+	return args.Get(0).(forwarder.VolumeResponse)
 }
 
 func (f *MockForwarder) GetPath(request forwarder.VolumeRequest) forwarder.GetPathResponse {
-	return forwarder.GetPathResponse{
-		Mountpoint: "/" + request.Name,
-		Err:        "",
-	}
+	args := f.Called(request)
+	return args.Get(0).(forwarder.GetPathResponse)
 }
 
 func (f *MockForwarder) GetVolume(request forwarder.VolumeRequest) forwarder.GetVolumeResponse {
-	return forwarder.GetVolumeResponse{
-		Err: "",
-		Volume: forwarder.Volume{
-			Name:       request.Name,
-			Mountpoint: "/" + request.Name,
-			Status:     map[string]string{},
-		},
-	}
+	args := f.Called(request)
+	return args.Get(0).(forwarder.GetVolumeResponse)
 }
 
 func (f *MockForwarder) ListVolumes() forwarder.ListVolumeResponse {
-	return forwarder.ListVolumeResponse{
-		Err: "",
+	args := f.Called()
+	return args.Get(0).(forwarder.ListVolumeResponse)
+}
+
+func (f *MockForwarder) MountVolume(request forwarder.MountVolumeRequest) forwarder.VolumeResponse {
+	args := f.Called(request)
+	return args.Get(0).(forwarder.VolumeResponse)
+}
+
+func (f *MockForwarder) PluginActivate() forwarder.PluginDescription {
+	args := f.Called()
+	return args.Get(0).(forwarder.PluginDescription)
+}
+
+func (f *MockForwarder) RemoveVolume(request forwarder.VolumeRequest) forwarder.VolumeResponse {
+	args := f.Called(request)
+	return args.Get(0).(forwarder.VolumeResponse)
+}
+
+func (f *MockForwarder) VolumeCapabilities() forwarder.VolumeCapabilities {
+	args := f.Called()
+	return args.Get(0).(forwarder.VolumeCapabilities)
+}
+
+func (f *MockForwarder) UnmountVolume(request forwarder.MountVolumeRequest) forwarder.VolumeResponse {
+	args := f.Called(request)
+	return args.Get(0).(forwarder.VolumeResponse)
+}
+
+func TestCreateVolume(t *testing.T) {
+	f := new(MockForwarder)
+	f.On("CreateVolume", mock.Anything).Return(forwarder.VolumeResponse{})
+	l := create(f, "/socket")
+	body := "{\"Name\":\"foo/vol\",\"Opts\":{}}"
+	req, _ := http.NewRequest("POST", "/VolumeDriver.Create", strings.NewReader(body))
+	rr := httptest.NewRecorder()
+	handler, _ := l.mux.Handler(req)
+	handler.ServeHTTP(rr, req)
+	assert.Equal(t, "{\"Err\":\"\"}", rr.Body.String())
+	f.AssertExpectations(t)
+}
+
+func TestGetVolume(t *testing.T) {
+	f := new(MockForwarder)
+	f.On("GetVolume", mock.Anything).Return(forwarder.GetVolumeResponse{
+		Volume: forwarder.Volume{
+			Name:       "foo/vol",
+			Mountpoint: "/vol",
+			Status:     map[string]string{},
+		},
+	})
+	l := create(f, "/socket")
+	body := "{\"Name\":\"foo/vol\"}"
+	req, _ := http.NewRequest("POST", "/VolumeDriver.Get", strings.NewReader(body))
+	rr := httptest.NewRecorder()
+	handler, _ := l.mux.Handler(req)
+	handler.ServeHTTP(rr, req)
+	assert.Equal(t, "{\"Err\":\"\",\"Volume\":{\"Name\":\"foo/vol\",\"Mountpoint\":\"/vol\",\"Status\":{}}}", rr.Body.String())
+	f.AssertExpectations(t)
+}
+
+func TestGetPath(t *testing.T) {
+	f := new(MockForwarder)
+	f.On("GetPath", mock.Anything).Return(forwarder.GetPathResponse{Mountpoint: "/vol"})
+	l := create(f, "/socket")
+	body := "{\"Name\":\"foo/vol\"}"
+	req, _ := http.NewRequest("POST", "/VolumeDriver.Path", strings.NewReader(body))
+	rr := httptest.NewRecorder()
+	handler, _ := l.mux.Handler(req)
+	handler.ServeHTTP(rr, req)
+	assert.Equal(t, "{\"Err\":\"\",\"Mountpoint\":\"/vol\"}", rr.Body.String())
+	f.AssertExpectations(t)
+}
+
+func TestListVolumes(t *testing.T) {
+	f := new(MockForwarder)
+	f.On("ListVolumes").Return(forwarder.ListVolumeResponse{
 		Volumes: []forwarder.Volume{
 			{
 				Name:       "foo/vol",
@@ -50,35 +118,51 @@ func (f *MockForwarder) ListVolumes() forwarder.ListVolumeResponse {
 				Status:     map[string]string{},
 			},
 		},
-	}
-}
-
-func (f *MockForwarder) MountVolume(request forwarder.MountVolumeRequest) forwarder.VolumeResponse {
-	return forwarder.VolumeResponse{Err: ""}
-}
-
-func (f *MockForwarder) PluginActivate() forwarder.PluginDescription {
-	return forwarder.PluginDescription{Implements: []string{"VolumeDriver"}}
-}
-
-func (f *MockForwarder) RemoveVolume(request forwarder.VolumeRequest) forwarder.VolumeResponse {
-	return forwarder.VolumeResponse{Err: ""}
-}
-
-func (f *MockForwarder) VolumeCapabilities() forwarder.VolumeCapabilities {
-	return forwarder.VolumeCapabilities{Capabilities: forwarder.Capability{Scope: "local"}}
-}
-
-func (f *MockForwarder) UnmountVolume(request forwarder.MountVolumeRequest) forwarder.VolumeResponse {
-	return forwarder.VolumeResponse{Err: ""}
-}
-
-func TestCreateVolume(t *testing.T) {
-	l := create(new(MockForwarder), "/socket")
-	body := "{\"Name\":\"foo/vol\",\"Opts\":{}}"
-	req, _ := http.NewRequest("POST", "/VolumeDriver.Create", strings.NewReader(body))
+	})
+	l := create(f, "/socket")
+	req, _ := http.NewRequest("POST", "/VolumeDriver.List", nil)
 	rr := httptest.NewRecorder()
-	handler, _ := l.Mux.Handler(req)
+	handler, _ := l.mux.Handler(req)
+	handler.ServeHTTP(rr, req)
+	assert.Equal(t, "{\"Err\":\"\",\"Volumes\":[{\"Name\":\"foo/vol\",\"Mountpoint\":\"/foo/vol\",\"Status\":{}}]}", rr.Body.String())
+	f.AssertExpectations(t)
+}
+
+func TestMountVolume(t *testing.T) {
+	f := new(MockForwarder)
+	f.On("MountVolume", mock.Anything).Return(forwarder.VolumeResponse{})
+	l := create(f, "/socket")
+	body := "{\"Name\":\"foo/vol\",\"ID\":\"0\"}"
+	req, _ := http.NewRequest("POST", "/VolumeDriver.Mount", strings.NewReader(body))
+	rr := httptest.NewRecorder()
+	handler, _ := l.mux.Handler(req)
 	handler.ServeHTTP(rr, req)
 	assert.Equal(t, "{\"Err\":\"\"}", rr.Body.String())
+	f.AssertExpectations(t)
+}
+
+func TestRemoveVolume(t *testing.T) {
+	f := new(MockForwarder)
+	f.On("RemoveVolume", mock.Anything).Return(forwarder.VolumeResponse{})
+	l := create(f, "/socket")
+	body := "{\"Name\":\"foo/vol\"}"
+	req, _ := http.NewRequest("POST", "/VolumeDriver.Remove", strings.NewReader(body))
+	rr := httptest.NewRecorder()
+	handler, _ := l.mux.Handler(req)
+	handler.ServeHTTP(rr, req)
+	assert.Equal(t, "{\"Err\":\"\"}", rr.Body.String())
+	f.AssertExpectations(t)
+}
+
+func TestUnmountVolume(t *testing.T) {
+	f := new(MockForwarder)
+	f.On("UnmountVolume", mock.Anything).Return(forwarder.VolumeResponse{})
+	l := create(f, "/socket")
+	body := "{\"Name\":\"foo/vol\",\"ID\":\"0\"}"
+	req, _ := http.NewRequest("POST", "/VolumeDriver.Unmount", strings.NewReader(body))
+	rr := httptest.NewRecorder()
+	handler, _ := l.mux.Handler(req)
+	handler.ServeHTTP(rr, req)
+	assert.Equal(t, "{\"Err\":\"\"}", rr.Body.String())
+	f.AssertExpectations(t)
 }
