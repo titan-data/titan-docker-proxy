@@ -141,6 +141,18 @@ func TestMountVolume(t *testing.T) {
 	f.AssertExpectations(t)
 }
 
+func TestPluginActivate(t *testing.T) {
+	f := new(MockForwarder)
+	f.On("PluginActivate").Return(forwarder.PluginDescription{Implements: []string{"VolumeDriver"}})
+	l := create(f, "/socket")
+	req, _ := http.NewRequest("POST", "/Plugin.Activate", nil)
+	rr := httptest.NewRecorder()
+	handler, _ := l.mux.Handler(req)
+	handler.ServeHTTP(rr, req)
+	assert.Equal(t, "{\"Implements\":[\"VolumeDriver\"]}", rr.Body.String())
+	f.AssertExpectations(t)
+}
+
 func TestRemoveVolume(t *testing.T) {
 	f := new(MockForwarder)
 	f.On("RemoveVolume", mock.Anything).Return(forwarder.VolumeResponse{})
@@ -151,6 +163,20 @@ func TestRemoveVolume(t *testing.T) {
 	handler, _ := l.mux.Handler(req)
 	handler.ServeHTTP(rr, req)
 	assert.Equal(t, "{\"Err\":\"\"}", rr.Body.String())
+	f.AssertExpectations(t)
+}
+
+func TestVolumeCapabilities(t *testing.T) {
+	f := new(MockForwarder)
+	f.On("VolumeCapabilities").Return(forwarder.VolumeCapabilities{
+		Capabilities: forwarder.Capability{Scope: "local"},
+	})
+	l := create(f, "/socket")
+	req, _ := http.NewRequest("POST", "/VolumeDriver.Capabilities", nil)
+	rr := httptest.NewRecorder()
+	handler, _ := l.mux.Handler(req)
+	handler.ServeHTTP(rr, req)
+	assert.Equal(t, "{\"Capabilities\":{\"Scope\":\"local\"}}", rr.Body.String())
 	f.AssertExpectations(t)
 }
 

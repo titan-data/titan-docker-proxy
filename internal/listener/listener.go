@@ -83,6 +83,8 @@ func create(forward forwarder.Forwarder, path string) listener {
 		mux:  http.NewServeMux(),
 	}
 
+	l.mux.Handle("/Plugin.Activate", handler{l, nil, forward.PluginActivate})
+	l.mux.Handle("/VolumeDriver.Capabilities", handler{l, nil, forward.VolumeCapabilities})
 	l.mux.Handle("/VolumeDriver.Create", handler{l, &forwarder.CreateVolumeRequest{}, forward.CreateVolume})
 	l.mux.Handle("/VolumeDriver.Get", handler{l, &forwarder.VolumeRequest{}, forward.GetVolume})
 	l.mux.Handle("/VolumeDriver.Path", handler{l, &forwarder.VolumeRequest{}, forward.GetPath})
