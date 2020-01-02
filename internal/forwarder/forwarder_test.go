@@ -14,7 +14,7 @@ import (
 	"testing"
 )
 
-func testForwarder(handler http.Handler) (forwarder, func()) {
+func testForwarder(handler http.Handler) (Forwarder, func()) {
 	s := httptest.NewServer(handler)
 
 	cli := &http.Client{
@@ -25,17 +25,17 @@ func testForwarder(handler http.Handler) (forwarder, func()) {
 		},
 	}
 
-	return MockForwarder(cli), s.Close
+	return NewClient(cli), s.Close
 }
 
 func TestPluginActivate(t *testing.T) {
-	f := Forwarder("localhost", 5001)
+	f := New("localhost", 5001)
 	resp := f.PluginActivate()
 	assert.Equal(t, resp.Implements[0], "VolumeDriver")
 }
 
 func TestVolumeDriverCapabilities(t *testing.T) {
-	f := Forwarder("localhost", 5001)
+	f := New("localhost", 5001)
 	resp := f.VolumeCapabilities()
 	assert.Equal(t, resp.Capabilities.Scope, "local")
 }
@@ -115,7 +115,7 @@ func TestGetVolume(t *testing.T) {
 }
 
 func TestGetVolumeBadName(t *testing.T) {
-	f := Forwarder("localhost", 5001)
+	f := New("localhost", 5001)
 
 	resp := f.GetVolume(VolumeRequest{Name: "foo"})
 	assert.Equal(t, resp.Err, "volume name must be of the form <repository>/<volume>")
@@ -199,7 +199,7 @@ func TestCreateVolumeNoOpts(t *testing.T) {
 }
 
 func TestCreateVolumeBadName(t *testing.T) {
-	f := Forwarder("localhost", 5001)
+	f := New("localhost", 5001)
 
 	resp := f.CreateVolume(CreateVolumeRequest{Name: "foo", Opts: map[string]interface{}{"a": "b"}})
 	assert.Equal(t, resp.Err, "volume name must be of the form <repository>/<volume>")
@@ -234,7 +234,7 @@ func TestRemoveVolume(t *testing.T) {
 }
 
 func TestRemoveVolumeBadName(t *testing.T) {
-	f := Forwarder("localhost", 5001)
+	f := New("localhost", 5001)
 
 	resp := f.RemoveVolume(VolumeRequest{Name: "foo"})
 	assert.Equal(t, resp.Err, "volume name must be of the form <repository>/<volume>")
@@ -269,7 +269,7 @@ func TestMountVolume(t *testing.T) {
 }
 
 func TestMountVolumeBadName(t *testing.T) {
-	f := Forwarder("localhost", 5001)
+	f := New("localhost", 5001)
 
 	resp := f.MountVolume(MountVolumeRequest{Name: "foo"})
 	assert.Equal(t, resp.Err, "volume name must be of the form <repository>/<volume>")
@@ -305,7 +305,7 @@ func TestUnmountVolume(t *testing.T) {
 }
 
 func TestUnmountVolumeBadName(t *testing.T) {
-	f := Forwarder("localhost", 5001)
+	f := New("localhost", 5001)
 
 	resp := f.UnmountVolume(MountVolumeRequest{Name: "foo"})
 	assert.Equal(t, resp.Err, "volume name must be of the form <repository>/<volume>")

@@ -20,6 +20,18 @@ import (
  * other portions of the package.
  */
 
+type Forwarder interface {
+	CreateVolume(request CreateVolumeRequest) VolumeResponse
+	GetPath(request VolumeRequest) GetPathResponse
+	GetVolume(request VolumeRequest) GetVolumeResponse
+	ListVolumes() ListVolumeResponse
+	MountVolume(request MountVolumeRequest) VolumeResponse
+	PluginActivate() PluginDescription
+	RemoveVolume(request VolumeRequest) VolumeResponse
+	VolumeCapabilities() VolumeCapabilities
+	UnmountVolume(request MountVolumeRequest) VolumeResponse
+}
+
 type forwarder struct {
 	client *titan.APIClient
 	ctx    context.Context
@@ -65,7 +77,7 @@ func standardResponse(err error) VolumeResponse {
  * Converts from a Titan volume to a Docker volume. The main difference is that the repository name is part of the
  * volume name. The mountpoint is also pulled out of the properties to a first class response.
  */
-func titanToDocker(repo string, vol titan.Volume) Volume {
+func convertVolume(repo string, vol titan.Volume) Volume {
 	return Volume{
 		Name:       fmt.Sprintf("%s/%s", repo, vol.Name),
 		Mountpoint: vol.Config["mountpoint"].(string),
@@ -104,7 +116,7 @@ func (p forwarder) ListVolumes() ListVolumeResponse {
 			return ListVolumeResponse{Err: getErrorString(err)}
 		}
 		for _, vol := range volumes {
-			ret.Volumes = append(ret.Volumes, titanToDocker(repo.Name, vol))
+			ret.Volumes = append(ret.Volumes, convertVolume(repo.Name, vol))
 		}
 	}
 
@@ -138,7 +150,7 @@ func (p forwarder) GetVolume(request VolumeRequest) GetVolumeResponse {
 		return GetVolumeResponse{Err: getErrorString(err)}
 	}
 
-	return GetVolumeResponse{Volume: titanToDocker(repoName, volume)}
+	return GetVolumeResponse{Volume: convertVolume(repoName, volume)}
 }
 
 /*
@@ -219,7 +231,7 @@ func (p forwarder) UnmountVolume(request MountVolumeRequest) VolumeResponse {
 /*
  * Public forwarder constructor. Takes a host ("localhost") and port (5001) to pass to the client.
  */
-func Forwarder(host string, port int) forwarder {
+func New(host string, port int) Forwarder {
 	config := titan.NewConfiguration()
 	config.Host = fmt.Sprintf("%s:%d", host, port)
 	client := titan.NewAPIClient(config)
@@ -233,7 +245,7 @@ func Forwarder(host string, port int) forwarder {
  * For use in testing, this allows the test to pass a (mock) HTTP client to the titan client in order to facilitate
  * testing.
  */
-func MockForwarder(httpClient *http.Client) forwarder {
+func NewClient(httpClient *http.Client) Forwarder {
 	config := titan.NewConfiguration()
 	config.HTTPClient = httpClient
 	client := titan.NewAPIClient(config)

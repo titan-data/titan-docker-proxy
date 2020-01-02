@@ -29,7 +29,7 @@ func main() {
 
 	fmt.Printf("Proxying requests from %s to %s:%d\n", path, *host, *port)
 
-	titan := forwarder.Forwarder(*host, *port)
+	titan := forwarder.New(*host, *port)
 	volumes := titan.ListVolumes()
 
 	for _, vol := range volumes.Volumes {
