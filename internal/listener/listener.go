@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"reflect"
 )
 
 /*
@@ -27,18 +28,38 @@ type listener struct {
 	Mux		  *http.ServeMux
 }
 
-func getBody(r *http.Request, request interface{}) error {
-	body, err := ioutil.ReadAll(r.Body)
-	if err == nil {
-		err = json.Unmarshal(body, request)
-	}
-	return err
+type handler struct {
+	l         *listener
+	r         interface{}
+	f         interface{}
 }
 
-func writeResponse(w http.ResponseWriter, response interface{}, err error) {
+func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	var response []reflect.Value
+	var err error
+
+	funcValue := reflect.ValueOf(h.f)
+
+	funcType := reflect.TypeOf(h.f)
+	argCount := funcType.NumIn()
+	if (argCount == 1) {
+		body, err := ioutil.ReadAll(r.Body)
+		if err == nil {
+			err = json.Unmarshal(body, h.r)
+		}
+
+		response = funcValue.Call([]reflect.Value{ reflect.ValueOf(h.r).Elem() })
+	} else {
+		response = funcValue.Call([]reflect.Value{})
+	}
+
 	var body []byte
 	if err == nil {
-		body, err = json.Marshal(response)
+		response = reflect.ValueOf(json.Marshal).Call(response)
+		body = response[0].Bytes()
+		if !response[1].IsNil() {
+			err = response[1].Interface().(error)
+		}
 	}
 
 	if err != nil {
@@ -52,25 +73,13 @@ func writeResponse(w http.ResponseWriter, response interface{}, err error) {
 	w.Write(body)
 }
 
-func (l listener) CreateVolume(w http.ResponseWriter, r *http.Request) {
-	var request forwarder.CreateVolumeRequest
-	var response forwarder.VolumeResponse
-
-	err := getBody(r, &request)
-	if err == nil {
-		response = l.Forwarder.CreateVolume(request)
-	}
-
-	writeResponse(w, response, err)
-}
-
-func create(forwarder forwarder.Forwarder, path string) listener {
+func create(forward forwarder.Forwarder, path string) listener {
 	l := &listener{
-		Forwarder: forwarder,
+		Forwarder: forward,
 		Path:      path,
 		Mux:       http.NewServeMux(),
 	}
-	l.Mux.HandleFunc("/VolumeDriver.Create", l.CreateVolume)
+	l.Mux.Handle("/VolumeDriver.Create", handler{l, &forwarder.CreateVolumeRequest{}, forward.CreateVolume})
 	return *l
 }
 
