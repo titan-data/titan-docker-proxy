@@ -8,6 +8,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/titan-data/titan-docker-proxy/internal/forwarder"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -71,8 +74,11 @@ func (f *MockForwarder) UnmountVolume(request forwarder.MountVolumeRequest) forw
 }
 
 func TestCreateVolume(t *testing.T) {
-	f := new(MockForwarder)
-	l := Raw(f, "/path")
-	resp := l.CreateVolume([]byte("{\"Name\":\"foo/vol\",\"Opts\":{}}"))
-	assert.Equal(t, "{\"Err\":\"\"}", string(resp))
+	l := create(new(MockForwarder), "/socket")
+	body := "{\"Name\":\"foo/vol\",\"Opts\":{}}"
+	req, _ := http.NewRequest("POST", "/VolumeDriver.Create", strings.NewReader(body))
+	rr := httptest.NewRecorder()
+	handler, _ := l.Mux.Handler(req)
+	handler.ServeHTTP(rr, req)
+	assert.Equal(t, "{\"Err\":\"\"}", rr.Body.String())
 }

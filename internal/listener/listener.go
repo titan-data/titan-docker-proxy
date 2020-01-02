@@ -5,8 +5,11 @@ package listener
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 	"github.com/titan-data/titan-docker-proxy/internal/forwarder"
+	"io/ioutil"
+	"net"
+	"net/http"
 )
 
 /*
@@ -21,35 +24,65 @@ type Listener interface {
 type listener struct {
 	Forwarder forwarder.Forwarder
 	Path      string
+	Mux		  *http.ServeMux
 }
 
-func (l listener) CreateVolume(body []byte) []byte {
-	var request forwarder.CreateVolumeRequest
-	var responseBody []byte
-
-	err := json.Unmarshal(body, &request)
+func getBody(r *http.Request, request interface{}) error {
+	body, err := ioutil.ReadAll(r.Body)
 	if err == nil {
-		response := l.Forwarder.CreateVolume(request)
-		responseBody, err = json.Marshal(response)
+		err = json.Unmarshal(body, request)
+	}
+	return err
+}
+
+func writeResponse(w http.ResponseWriter, response interface{}, err error) {
+	var body []byte
+	if err == nil {
+		body, err = json.Marshal(response)
 	}
 
 	if err != nil {
-		responseBody, _ = json.Marshal(forwarder.VolumeResponse{Err: err.Error()})
+		body, err = json.Marshal(forwarder.VolumeResponse{Err: err.Error()})
 	}
-	return responseBody
+
+	if body == nil {
+		body = []byte("{\"Err\":\"Unable to serialize error response\"}")
+	}
+
+	w.Write(body)
+}
+
+func (l listener) CreateVolume(w http.ResponseWriter, r *http.Request) {
+	var request forwarder.CreateVolumeRequest
+	var response forwarder.VolumeResponse
+
+	err := getBody(r, &request)
+	if err == nil {
+		response = l.Forwarder.CreateVolume(request)
+	}
+
+	writeResponse(w, response, err)
+}
+
+func create(forwarder forwarder.Forwarder, path string) listener {
+	l := &listener{
+		Forwarder: forwarder,
+		Path:      path,
+		Mux:       http.NewServeMux(),
+	}
+	l.Mux.HandleFunc("/VolumeDriver.Create", l.CreateVolume)
+	return *l
 }
 
 func (l listener) Listen() error {
-	return errors.New("TODO")
-}
-
-func Raw(forwarder forwarder.Forwarder, path string) listener {
-	return listener{
-		Forwarder: forwarder,
-		Path:      path,
+	listen, err := net.Listen("unix", l.Path)
+	if err != nil {
+		return fmt.Errorf("listen failed on %s: %w", l.Path, err)
 	}
+
+	return http.Serve(listen, l.Mux)
 }
 
 func New(forwarder forwarder.Forwarder, path string) Listener {
-	return Raw(forwarder, path)
+	return create(forwarder, path)
 }
