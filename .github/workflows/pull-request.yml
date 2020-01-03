@@ -1,4 +1,8 @@
 #
+# Copyright The Titan Project Contributors.
+#
+
+#
 # Build and test on pull request
 #
 name: Pull Request
@@ -10,7 +14,7 @@ on:
 jobs:
   build:
     name: Build
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
       - uses: actions/setup-go@v1

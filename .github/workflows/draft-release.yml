@@ -19,5 +19,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: toolmantim/release-drafter@v5.2.0
+        id: draft_release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
