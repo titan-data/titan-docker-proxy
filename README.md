@@ -1,6 +1,7 @@
 # About this Project
 
-Describe the project for users.
+This project provides a daemon that will listen on a Docker plugin socket and forward requests to
+titan-server. This enables the titan-server API to remain independent of any docker-isms.
 
 ## Contributing
 
