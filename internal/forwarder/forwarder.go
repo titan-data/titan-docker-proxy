@@ -25,7 +25,7 @@ type Forwarder interface {
 	GetPath(request VolumeRequest) GetPathResponse
 	GetVolume(request VolumeRequest) GetVolumeResponse
 	ListVolumes() ListVolumeResponse
-	MountVolume(request MountVolumeRequest) VolumeResponse
+	MountVolume(request MountVolumeRequest) GetPathResponse
 	PluginActivate() PluginDescription
 	RemoveVolume(request VolumeRequest) VolumeResponse
 	VolumeCapabilities() VolumeCapabilities
@@ -207,12 +207,20 @@ func (p forwarder) RemoveVolume(request VolumeRequest) VolumeResponse {
  *
  * Mount a volume. This is equivalent to activating a titan volume.
  */
-func (p forwarder) MountVolume(request MountVolumeRequest) VolumeResponse {
+func (p forwarder) MountVolume(request MountVolumeRequest) GetPathResponse {
 	repoName, volumeName, err := parseVolumeName(request.Name)
 	if err == nil {
-		_, err = p.client.VolumesApi.ActivateVolume(p.ctx, repoName, volumeName)
+		var vol titan.Volume
+		vol, _, err = p.client.VolumesApi.GetVolume(p.ctx, repoName, volumeName)
+		if err == nil {
+			_, err = p.client.VolumesApi.ActivateVolume(p.ctx, repoName, volumeName)
+		}
+		if err == nil {
+			return GetPathResponse{Mountpoint: vol.Config["mountpoint"].(string)}
+		}
 	}
-	return standardResponse(err)
+
+	return GetPathResponse{Err: getErrorString(err)}
 }
 
 /*

@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/titan-data/titan-docker-proxy/internal/forwarder"
+	"github.com/titan-data/titan-docker-proxy/internal/listener"
 	"os"
 )
 
@@ -23,16 +24,18 @@ func main() {
 	flag.Parse()
 
 	if flag.NArg() != 1 {
-		panic("missing required socket path")
+		fmt.Fprintf(os.Stderr, "missing required socket path")
+		os.Exit(2)
 	}
 	path := flag.Arg(0)
 
 	fmt.Printf("Proxying requests from %s to %s:%d\n", path, *host, *port)
 
-	titan := forwarder.New(*host, *port)
-	volumes := titan.ListVolumes()
+	forward := forwarder.New(*host, *port)
+	listen := listener.New(forward, path)
 
-	for _, vol := range volumes.Volumes {
-		fmt.Println(vol.Name)
+	err := listen.Listen()
+	if err != nil {
+		panic(err)
 	}
 }

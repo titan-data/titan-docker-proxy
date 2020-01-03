@@ -46,12 +46,14 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	funcValue := reflect.ValueOf(h.fun)
 	if h.req != nil {
 		body, err := ioutil.ReadAll(r.Body)
+		fmt.Printf("%s %-24s -> %s", r.Method, r.RequestURI, string(body))
 		if err == nil {
 			err = json.Unmarshal(body, h.req)
 		}
 
 		response = funcValue.Call([]reflect.Value{reflect.ValueOf(h.req).Elem()})
 	} else {
+		fmt.Printf("%s %-24s ->\n", r.Method, r.RequestURI)
 		response = funcValue.Call([]reflect.Value{})
 	}
 
@@ -73,6 +75,7 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+	fmt.Printf("%s %-24s <- %s\n", r.Method, r.RequestURI, string(body))
 	w.Write(body)
 }
 

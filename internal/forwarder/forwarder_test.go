@@ -70,7 +70,7 @@ func TestListVolumesRepoError(t *testing.T) {
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		assert.Equal(t, r.RequestURI, "/v1/repositories")
-		w.WriteHeader(404)
+		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("{\"message\":\"no such repository\"}"))
 	})
 	f, teardown := testForwarder(h)
@@ -87,7 +87,7 @@ func TestListVolumesVolumeError(t *testing.T) {
 			w.Write([]byte("[{\"name\":\"foo\",\"properties\":{}}]"))
 		} else {
 			assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes")
-			w.WriteHeader(404)
+			w.WriteHeader(http.StatusNotFound)
 			w.Write([]byte("{\"message\":\"no such volume\"}"))
 		}
 	})
@@ -125,7 +125,7 @@ func TestGetVolumeError(t *testing.T) {
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes/vol")
-		w.WriteHeader(404)
+		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("{\"message\":\"no such volume\"}"))
 	})
 	f, teardown := testForwarder(h)
@@ -154,7 +154,7 @@ func TestGetPathError(t *testing.T) {
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes/vol")
-		w.WriteHeader(404)
+		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("{\"message\":\"no such volume\"}"))
 	})
 	f, teardown := testForwarder(h)
@@ -167,7 +167,7 @@ func TestGetPathError(t *testing.T) {
 func TestCreateVolume(t *testing.T) {
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(201)
+		w.WriteHeader(http.StatusCreated)
 		assert.Equal(t, r.Method, "POST")
 		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes")
 		body, _ := ioutil.ReadAll(r.Body)
@@ -184,7 +184,7 @@ func TestCreateVolume(t *testing.T) {
 func TestCreateVolumeNoOpts(t *testing.T) {
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(201)
+		w.WriteHeader(http.StatusCreated)
 		assert.Equal(t, r.Method, "POST")
 		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes")
 		body, _ := ioutil.ReadAll(r.Body)
@@ -208,7 +208,7 @@ func TestCreateVolumeBadName(t *testing.T) {
 func TestCreateVolumeError(t *testing.T) {
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(404)
+		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("{\"message\":\"no such repository\"}"))
 		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes")
 	})
@@ -224,7 +224,7 @@ func TestRemoveVolume(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		assert.Equal(t, r.Method, "DELETE")
 		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes/vol")
-		w.WriteHeader(204)
+		w.WriteHeader(http.StatusNoContent)
 	})
 	f, teardown := testForwarder(h)
 	defer teardown()
@@ -243,7 +243,7 @@ func TestRemoveVolumeBadName(t *testing.T) {
 func TestRemoveVolumeError(t *testing.T) {
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(404)
+		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("{\"message\":\"no such repository\"}"))
 		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes/vol")
 	})
@@ -257,9 +257,15 @@ func TestRemoveVolumeError(t *testing.T) {
 func TestMountVolume(t *testing.T) {
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		assert.Equal(t, r.Method, "POST")
-		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes/vol/activate")
-		w.WriteHeader(204)
+		if r.RequestURI == "/v1/repositories/foo/volumes/vol" {
+			assert.Equal(t, r.Method, "GET")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("{\"name\":\"vol\",\"config\":{\"mountpoint\":\"/vol\"}}"))
+		} else {
+			assert.Equal(t, r.Method, "POST")
+			assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes/vol/activate")
+			w.WriteHeader(http.StatusNoContent)
+		}
 	})
 	f, teardown := testForwarder(h)
 	defer teardown()
@@ -278,10 +284,16 @@ func TestMountVolumeBadName(t *testing.T) {
 func TestMountVolumeError(t *testing.T) {
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		assert.Equal(t, r.Method, "POST")
-		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes/vol/activate")
-		w.WriteHeader(404)
-		w.Write([]byte("{\"message\":\"no such repository\"}"))
+		if r.RequestURI == "/v1/repositories/foo/volumes/vol" {
+			assert.Equal(t, r.Method, "GET")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("{\"name\":\"vol\",\"config\":{\"mountpoint\":\"/vol\"}}"))
+		} else {
+			assert.Equal(t, r.Method, "POST")
+			assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes/vol/activate")
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte("{\"message\":\"no such repository\"}"))
+		}
 	})
 	f, teardown := testForwarder(h)
 	defer teardown()
@@ -295,7 +307,7 @@ func TestUnmountVolume(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		assert.Equal(t, r.Method, "POST")
 		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes/vol/deactivate")
-		w.WriteHeader(204)
+		w.WriteHeader(http.StatusNoContent)
 	})
 	f, teardown := testForwarder(h)
 	defer teardown()
@@ -316,7 +328,7 @@ func TestUnmountVolumeError(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		assert.Equal(t, r.Method, "POST")
 		assert.Equal(t, r.RequestURI, "/v1/repositories/foo/volumes/vol/deactivate")
-		w.WriteHeader(404)
+		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("{\"message\":\"no such repository\"}"))
 	})
 	f, teardown := testForwarder(h)
