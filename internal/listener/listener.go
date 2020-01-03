@@ -21,12 +21,14 @@ import (
 
 type Listener interface {
 	Listen() error
+	SetLogging(enabled bool)
 }
 
 type listener struct {
 	forw forwarder.Forwarder
 	path string
 	mux  *http.ServeMux
+	log  bool
 }
 
 type handler struct {
@@ -46,14 +48,18 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	funcValue := reflect.ValueOf(h.fun)
 	if h.req != nil {
 		body, err := ioutil.ReadAll(r.Body)
-		fmt.Printf("%s %-24s -> %s", r.Method, r.RequestURI, string(body))
+		if h.listen.log {
+			fmt.Printf("%s %-24s -> %s", r.Method, r.RequestURI, string(body))
+		}
 		if err == nil {
 			err = json.Unmarshal(body, h.req)
 		}
 
 		response = funcValue.Call([]reflect.Value{reflect.ValueOf(h.req).Elem()})
 	} else {
-		fmt.Printf("%s %-24s ->\n", r.Method, r.RequestURI)
+		if h.listen.log {
+			fmt.Printf("%s %-24s ->\n", r.Method, r.RequestURI)
+		}
 		response = funcValue.Call([]reflect.Value{})
 	}
 
@@ -75,7 +81,9 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	fmt.Printf("%s %-24s <- %s\n", r.Method, r.RequestURI, string(body))
+	if h.listen.log {
+		fmt.Printf("%s %-24s <- %s\n", r.Method, r.RequestURI, string(body))
+	}
 	w.Write(body)
 }
 
@@ -84,6 +92,7 @@ func create(forward forwarder.Forwarder, path string) listener {
 		forw: forward,
 		path: path,
 		mux:  http.NewServeMux(),
+		log: false,
 	}
 
 	l.mux.Handle("/Plugin.Activate", handler{l, nil, forward.PluginActivate})
@@ -106,6 +115,10 @@ func (l listener) Listen() error {
 	}
 
 	return http.Serve(listen, l.mux)
+}
+
+func (l listener) SetLogging(enabled bool) {
+	l.log = enabled
 }
 
 func New(forwarder forwarder.Forwarder, path string) Listener {

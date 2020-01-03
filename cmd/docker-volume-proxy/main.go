@@ -33,6 +33,7 @@ func main() {
 
 	forward := forwarder.New(*host, *port)
 	listen := listener.New(forward, path)
+	listen.SetLogging(true)
 
 	err := listen.Listen()
 	if err != nil {
