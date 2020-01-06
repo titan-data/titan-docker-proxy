@@ -25,10 +25,6 @@ jobs:
           curl -sH "Authorization: token $GITHUB_TOKEN" https://api.github.com/repos/$GITHUB_REPOSITORY/releases | jq -rc '.[] | select(.draft) | .upload_url'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: echo
-        run: echo $UPLOAD_URL
-        env:
-          UPLOAD_URL: ${{ steps.draft_release.outputs.upload_url }}
       - name: Build
         run: go build ./cmd/docker-volume-proxy
       - name: Test
