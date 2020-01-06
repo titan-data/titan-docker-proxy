@@ -8,12 +8,15 @@
 name: Release
 
 #on: create
-on: push
+on:
+  push:
+    branches:
+      - master
 
 jobs:
   upload:
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+#    if: startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/checkout@v1
       - uses: actions/setup-go@v1
