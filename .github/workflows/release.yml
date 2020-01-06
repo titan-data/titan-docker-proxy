@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-go@v1
         with:
           go-version: '1.13.5'
-      - uses: toolmantim/release-drafter@v5.2.0
+      - uses: toolmantim/release-drafter@v5.5.0
         id: draft_release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
