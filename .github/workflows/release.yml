@@ -7,7 +7,8 @@
 #
 name: Release
 
-on: create
+#on: create
+on: push
 
 jobs:
   upload:
@@ -21,7 +22,7 @@ jobs:
       - name: Get Draft Release
         id: draft_release
         run: |
-          echo -n ::set-output name=upload_url::
+          echo -n set-output name=upload_url::
           echo curl -sH "Authorization: token $GITHUB_TOKEN" https://api.github.com/repos/$GITHUB_REPOSITORY/releases | jq -rc '.[] | select(.draft) | .upload_url'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
